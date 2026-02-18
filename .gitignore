@@ -65,6 +65,9 @@ android-sdk/
 .cache/
 *.tsbuildinfo
 
+# === Generated static files (built by Dockerfile) ===
+backend/static/
+
 # === Archive files ===
 **/*.zip
 **/*.tar.gz

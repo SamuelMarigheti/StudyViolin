@@ -1,5 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -1386,16 +1388,6 @@ async def reset_progress(user: dict = Depends(get_current_user)):
     
     return {"message": "Progresso resetado com sucesso"}
 
-# Root route (for Railway healthcheck and public access)
-@app.get("/")
-async def root_redirect():
-    return {
-        "message": "Violin Study Plan API",
-        "version": "2.0",
-        "docs": "/docs",
-        "api": "/api/"
-    }
-
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -1406,6 +1398,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve frontend static files (built with: npx expo export --platform web)
+FRONTEND_DIR = ROOT_DIR / "static"
+if FRONTEND_DIR.exists():
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+    app.mount("/_expo", StaticFiles(directory=str(FRONTEND_DIR / "_expo")), name="expo")
+
+    # Catch-all: serve index.html for any non-API route (SPA routing)
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Try to serve the exact file first
+        file_path = FRONTEND_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        # Fallback to index.html for SPA routing
+        index_path = FRONTEND_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        raise HTTPException(status_code=404, detail="Not Found")
+else:
+    # Fallback root route when no frontend is built
+    @app.get("/")
+    async def root_info():
+        return {
+            "message": "Violin Study Plan API",
+            "version": "2.0",
+            "docs": "/docs",
+            "api": "/api/"
+        }
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
