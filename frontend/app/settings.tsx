@@ -62,12 +62,8 @@ export default function SettingsScreen() {
       showAlert('Erro', 'As senhas não coincidem');
       return;
     }
-    if (newPassword.length < 10) {
-      showAlert('Erro', 'A senha deve ter pelo menos 10 caracteres');
-      return;
-    }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      showAlert('Erro', 'A senha deve conter maiúscula, minúscula e número');
+    if (newPassword.length < 8) {
+      showAlert('Erro', 'A senha deve ter pelo menos 8 caracteres');
       return;
     }
 

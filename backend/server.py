@@ -7,8 +7,6 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
-import re
-import secrets
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator
@@ -41,24 +39,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
 # Admin default password
-ADMIN_DEFAULT_PASSWORD = os.environ.get('ADMIN_DEFAULT_PASSWORD', '')
-if not ADMIN_DEFAULT_PASSWORD:
-    ADMIN_DEFAULT_PASSWORD = secrets.token_urlsafe(16)
-    logger_early = logging.getLogger(__name__)
-    logger_early.warning(f"ADMIN_DEFAULT_PASSWORD not set. Generated: {ADMIN_DEFAULT_PASSWORD}")
-
-# Password policy
-def validate_password_strength(password: str) -> Optional[str]:
-    """Returns error message if password is weak, None if strong."""
-    if len(password) < 10:
-        return "A senha deve ter pelo menos 10 caracteres"
-    if not re.search(r'[A-Z]', password):
-        return "A senha deve conter pelo menos uma letra maiúscula"
-    if not re.search(r'[a-z]', password):
-        return "A senha deve conter pelo menos uma letra minúscula"
-    if not re.search(r'[0-9]', password):
-        return "A senha deve conter pelo menos um número"
-    return None
+ADMIN_DEFAULT_PASSWORD = "violino2024"
 
 # Brute force protection
 LOGIN_ATTEMPTS = {}  # {ip: {"count": int, "last_attempt": timestamp, "locked_until": timestamp}}
@@ -449,9 +430,8 @@ async def change_password(request: ChangePasswordRequest, user: dict = Depends(g
     if not verify_password(request.current_password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="Senha atual incorreta")
 
-    pw_error = validate_password_strength(request.new_password)
-    if pw_error:
-        raise HTTPException(status_code=400, detail=pw_error)
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter pelo menos 8 caracteres")
     
     new_hash = hash_password(request.new_password)
     await db.users.update_one(
@@ -470,9 +450,8 @@ async def first_login_password(request: FirstLoginPasswordRequest, user: dict = 
     if not user.get("must_change_password", False):
         raise HTTPException(status_code=400, detail="Troca de senha não necessária")
 
-    pw_error = validate_password_strength(request.new_password)
-    if pw_error:
-        raise HTTPException(status_code=400, detail=pw_error)
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter pelo menos 8 caracteres")
     
     new_hash = hash_password(request.new_password)
     await db.users.update_one(

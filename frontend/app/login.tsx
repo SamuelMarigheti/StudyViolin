@@ -56,12 +56,8 @@ export default function LoginScreen() {
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 10) {
-      showAlert('Erro', 'A nova senha deve ter pelo menos 10 caracteres');
-      return;
-    }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      showAlert('Erro', 'A senha deve conter maiúscula, minúscula e número');
+    if (newPassword.length < 8) {
+      showAlert('Erro', 'A nova senha deve ter pelo menos 8 caracteres');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -191,7 +187,7 @@ export default function LoginScreen() {
                 <Ionicons name="lock-closed-outline" size={20} color="#8b949e" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Nova senha (mín. 10 chars, A-z, 0-9)"
+                  placeholder="Nova senha (mín. 8 caracteres)"
                   placeholderTextColor="#8b949e"
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -218,25 +214,19 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {newPassword.length > 0 && newPassword.length < 10 && (
+              {newPassword.length > 0 && newPassword.length < 8 && (
                 <Text style={styles.passwordHint}>
-                  <Ionicons name="information-circle" size={14} color="#f85149" /> Mínimo 10 caracteres
+                  <Ionicons name="information-circle" size={14} color="#f85149" /> Mínimo 8 caracteres
                 </Text>
               )}
 
-              {newPassword.length >= 10 && (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) && (
-                <Text style={styles.passwordHint}>
-                  <Ionicons name="information-circle" size={14} color="#f85149" /> Deve conter maiúscula, minúscula e número
-                </Text>
-              )}
-
-              {newPassword.length >= 10 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) && confirmPassword.length > 0 && newPassword !== confirmPassword && (
+              {newPassword.length >= 8 && confirmPassword.length > 0 && newPassword !== confirmPassword && (
                 <Text style={styles.passwordHint}>
                   <Ionicons name="close-circle" size={14} color="#f85149" /> As senhas não coincidem
                 </Text>
               )}
 
-              {newPassword.length >= 10 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) && confirmPassword === newPassword && (
+              {newPassword.length >= 8 && confirmPassword === newPassword && (
                 <Text style={[styles.passwordHint, { color: '#3fb950' }]}>
                   <Ionicons name="checkmark-circle" size={14} color="#3fb950" /> Senhas conferem
                 </Text>
@@ -245,7 +235,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[styles.button, changingPassword && styles.buttonDisabled]}
                 onPress={handleChangePassword}
-                disabled={changingPassword || newPassword.length < 10 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || newPassword !== confirmPassword}
+                disabled={changingPassword || newPassword.length < 8 || newPassword !== confirmPassword}
               >
                 {changingPassword ? (
                   <ActivityIndicator color="#0d1117" />
