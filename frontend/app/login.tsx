@@ -16,6 +16,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../src/utils/alert';
 import ResponsiveContainer from '../src/components/ResponsiveContainer';
+import ViolinLogo from '../src/components/ViolinLogo';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');

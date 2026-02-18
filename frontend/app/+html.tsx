@@ -14,6 +14,8 @@ export default function Root({ children }: PropsWithChildren) {
         />
         <meta name="theme-color" content="#0d1117" />
         <meta name="description" content="Plano de Estudos de Violino — Do Iniciante ao Virtuoso. 489 lições em 7 sessões diárias." />
+        <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg" />
+        <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
           If you want to enable scrolling, remove `ScrollViewStyleReset` and

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0d1117"/>
+  <g transform="translate(9, 1) scale(0.44)">
+    <!-- Scroll -->
+    <path d="M14 2 C11 2, 8.5 4.5, 8.5 7 C8.5 9.5, 11 11, 12.5 9.5 C14 8, 12.5 5.5, 11 7" stroke="#d4a843" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <!-- Pegs -->
+    <line x1="9" y1="8" x2="6" y2="7" stroke="#d4a843" stroke-width="2" stroke-linecap="round"/>
+    <line x1="21" y1="8" x2="24" y2="7" stroke="#d4a843" stroke-width="2" stroke-linecap="round"/>
+    <!-- Neck -->
+    <rect x="13" y="11" width="4" height="14" rx="1.5" fill="#6B4F10" stroke="#d4a843" stroke-width="1"/>
+    <!-- Upper bout -->
+    <path d="M7 25 C3 27.5, 0.5 31, 0.5 35 C0.5 37.5, 2.5 39.5, 7 39.5" stroke="#d4a843" stroke-width="2.5" fill="none"/>
+    <path d="M23 25 C27 27.5, 29.5 31, 29.5 35 C29.5 37.5, 27.5 39.5, 23 39.5" stroke="#d4a843" stroke-width="2.5" fill="none"/>
+    <!-- Lower bout -->
+    <path d="M7 43 C2.5 45, -0.5 49, -0.5 53 C-0.5 58.5, 5 62, 15 62 C25 62, 30.5 58.5, 30.5 53 C30.5 49, 27.5 45, 23 43" stroke="#d4a843" stroke-width="2.5" fill="#1a1510"/>
+    <!-- F-holes -->
+    <path d="M9 46 C7.5 49, 7.5 53, 9 56" stroke="#d4a843" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M21 46 C22.5 49, 22.5 53, 21 56" stroke="#d4a843" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <!-- Strings -->
+    <line x1="14" y1="12" x2="14" y2="58" stroke="#d4a843" stroke-width="0.6" opacity="0.5"/>
+    <line x1="16" y1="12" x2="16" y2="58" stroke="#d4a843" stroke-width="0.6" opacity="0.5"/>
+    <!-- Tailpiece -->
+    <path d="M13 57 L15 62 L17 57" stroke="#d4a843" stroke-width="1.8" fill="#6B4F10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
