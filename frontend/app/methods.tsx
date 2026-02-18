@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -16,6 +15,8 @@ import { api } from '../src/services/api';
 import MethodForm from '../src/components/MethodForm';
 import LessonForm from '../src/components/LessonForm';
 import BatchLessonForm from '../src/components/BatchLessonForm';
+import { showAlert } from '../src/utils/alert';
+import ResponsiveContainer from '../src/components/ResponsiveContainer';
 
 const SESSION_LABELS: Record<string, string> = {
   scales: 'Escalas e Arpejos',
@@ -117,7 +118,7 @@ export default function MethodsScreen() {
   const handleCreateMethod = async (data: { name: string; author: string; category: string; session_type: string }) => {
     const res = await api.post('/api/methods', data);
     await loadMethods();
-    Alert.alert('Sucesso', res.data.message);
+    showAlert('Sucesso', res.data.message);
   };
 
   const handleUpdateMethod = async (data: { name: string; author: string; category: string; session_type: string }) => {
@@ -134,11 +135,11 @@ export default function MethodsScreen() {
       return copy;
     });
     setEditingMethod(null);
-    Alert.alert('Sucesso', 'Método atualizado');
+    showAlert('Sucesso', 'Método atualizado');
   };
 
   const handleDeleteMethod = (method: Method) => {
-    Alert.alert(
+    showAlert(
       'Deletar Método',
       `Deseja deletar "${method.name}" e todas as suas lições?`,
       [
@@ -156,9 +157,9 @@ export default function MethodsScreen() {
               });
               if (expandedMethod === method.id) setExpandedMethod(null);
               await loadMethods();
-              Alert.alert('Sucesso', 'Método deletado');
+              showAlert('Sucesso', 'Método deletado');
             } catch (error: any) {
-              Alert.alert('Erro', error.response?.data?.detail || 'Erro ao deletar');
+              showAlert('Erro', error.response?.data?.detail || 'Erro ao deletar');
             }
           },
         },
@@ -176,7 +177,7 @@ export default function MethodsScreen() {
       return copy;
     });
     loadMethodLessons(lessonMethodId);
-    Alert.alert('Sucesso', 'Lição criada');
+    showAlert('Sucesso', 'Lição criada');
   };
 
   const handleUpdateLesson = async (data: { title: string; subtitle: string; instruction: string; level: string; tags: string[] }) => {
@@ -191,11 +192,11 @@ export default function MethodsScreen() {
       loadMethodLessons(lessonMethodId);
     }
     setEditingLesson(null);
-    Alert.alert('Sucesso', 'Lição atualizada');
+    showAlert('Sucesso', 'Lição atualizada');
   };
 
   const handleDeleteLesson = (lesson: Lesson, methodId: string) => {
-    Alert.alert(
+    showAlert(
       'Deletar Lição',
       `Deseja deletar "${lesson.title}"?`,
       [
@@ -213,7 +214,7 @@ export default function MethodsScreen() {
               });
               loadMethodLessons(methodId);
             } catch (error: any) {
-              Alert.alert('Erro', error.response?.data?.detail || 'Erro ao deletar');
+              showAlert('Erro', error.response?.data?.detail || 'Erro ao deletar');
             }
           },
         },
@@ -237,7 +238,7 @@ export default function MethodsScreen() {
       return copy;
     });
     loadMethodLessons(batchMethodId);
-    Alert.alert('Sucesso', res.data.message);
+    showAlert('Sucesso', res.data.message);
   };
 
   // Group methods by seed/custom
@@ -439,30 +440,32 @@ export default function MethodsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d4a843" />
         }
       >
-        {/* Custom Methods */}
-        {customMethods.length > 0 && (
+        <ResponsiveContainer>
+          {/* Custom Methods */}
+          {customMethods.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Seus Métodos</Text>
+              {customMethods.map(renderMethodCard)}
+            </View>
+          )}
+
+          {/* Empty state for custom */}
+          {customMethods.length === 0 && (
+            <View style={styles.emptyCustom}>
+              <Ionicons name="add-circle-outline" size={48} color="#484f58" />
+              <Text style={styles.emptyCustomTitle}>Nenhum método personalizado</Text>
+              <Text style={styles.emptyCustomDesc}>
+                Toque no + acima para criar seu primeiro método com suas próprias lições.
+              </Text>
+            </View>
+          )}
+
+          {/* Seed Methods */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Seus Métodos</Text>
-            {customMethods.map(renderMethodCard)}
+            <Text style={styles.sectionTitle}>Métodos Padrão (somente leitura)</Text>
+            {seedMethods.map(renderMethodCard)}
           </View>
-        )}
-
-        {/* Empty state for custom */}
-        {customMethods.length === 0 && (
-          <View style={styles.emptyCustom}>
-            <Ionicons name="add-circle-outline" size={48} color="#484f58" />
-            <Text style={styles.emptyCustomTitle}>Nenhum método personalizado</Text>
-            <Text style={styles.emptyCustomDesc}>
-              Toque no + acima para criar seu primeiro método com suas próprias lições.
-            </Text>
-          </View>
-        )}
-
-        {/* Seed Methods */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Métodos Padrão (somente leitura)</Text>
-          {seedMethods.map(renderMethodCard)}
-        </View>
+        </ResponsiveContainer>
       </ScrollView>
 
       {/* Forms */}

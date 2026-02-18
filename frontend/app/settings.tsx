@@ -6,9 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
-  Share,
   Platform,
   Modal,
 } from 'react-native';
@@ -18,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { api } from '../src/services/api';
 import * as Clipboard from 'expo-clipboard';
+import { showAlert, showPrompt } from '../src/utils/alert';
+import ResponsiveContainer from '../src/components/ResponsiveContainer';
 
 const LEVEL_THRESHOLDS = [
   { min: 0, max: 59, level: "Iniciante", method_range: "Wohlfahrt" },
@@ -55,15 +55,19 @@ export default function SettingsScreen() {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      showAlert('Erro', 'Preencha todos os campos');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+      showAlert('Erro', 'As senhas não coincidem');
       return;
     }
-    if (newPassword.length < 8) {
-      Alert.alert('Erro', 'A senha deve ter pelo menos 8 caracteres');
+    if (newPassword.length < 10) {
+      showAlert('Erro', 'A senha deve ter pelo menos 10 caracteres');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      showAlert('Erro', 'A senha deve conter maiúscula, minúscula e número');
       return;
     }
 
@@ -73,13 +77,13 @@ export default function SettingsScreen() {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      Alert.alert('Sucesso', 'Senha alterada com sucesso');
+      showAlert('Sucesso', 'Senha alterada com sucesso');
       setShowChangePassword(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
-      Alert.alert('Erro', error.response?.data?.detail || 'Erro ao alterar senha');
+      showAlert('Erro', error.response?.data?.detail || 'Erro ao alterar senha');
     } finally {
       setLoading(false);
     }
@@ -90,7 +94,7 @@ export default function SettingsScreen() {
     try {
       const res = await api.get('/api/export');
       const jsonString = JSON.stringify(res.data, null, 2);
-      
+
       if (Platform.OS === 'web') {
         // Web: Download as file
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -100,60 +104,55 @@ export default function SettingsScreen() {
         a.download = `violin-backup-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        Alert.alert('Sucesso', 'Backup exportado');
+        showAlert('Sucesso', 'Backup exportado');
       } else {
         // Mobile: Copy to clipboard
         await Clipboard.setStringAsync(jsonString);
-        Alert.alert('Sucesso', 'Backup copiado para a área de transferência');
+        showAlert('Sucesso', 'Backup copiado para a área de transferência');
       }
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao exportar dados');
+      showAlert('Erro', 'Erro ao exportar dados');
     } finally {
       setLoading(false);
     }
   };
 
   const handleImport = () => {
-    Alert.prompt(
-      'Importar Backup',
-      'Cole o JSON do backup aqui:',
-      async (text) => {
-        if (!text) return;
-        try {
-          const data = JSON.parse(text);
-          // Preview first
-          const preview = await api.post('/api/import/preview', { data });
-          if (preview.data.warnings?.length > 0) {
-            Alert.alert(
-              'Aviso',
-              preview.data.warnings.join('\n') + '\n\nDeseja continuar?',
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Importar',
-                  onPress: async () => {
-                    await api.post('/api/import', { data });
-                    Alert.alert('Sucesso', 'Dados importados com sucesso');
-                    loadStats();
-                  }
-                }
-              ]
-            );
-          } else {
-            await api.post('/api/import', { data });
-            Alert.alert('Sucesso', 'Dados importados com sucesso');
-            loadStats();
-          }
-        } catch (error) {
-          Alert.alert('Erro', 'JSON inválido ou erro ao importar');
+    showPrompt('Importar Backup', 'Cole o JSON do backup aqui:', async (text) => {
+      if (!text) return;
+      try {
+        const data = JSON.parse(text);
+        // Preview first
+        const preview = await api.post('/api/import/preview', { data });
+        if (preview.data.warnings?.length > 0) {
+          showAlert(
+            'Aviso',
+            preview.data.warnings.join('\n') + '\n\nDeseja continuar?',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Importar',
+                onPress: async () => {
+                  await api.post('/api/import', { data });
+                  showAlert('Sucesso', 'Dados importados com sucesso');
+                  loadStats();
+                },
+              },
+            ]
+          );
+        } else {
+          await api.post('/api/import', { data });
+          showAlert('Sucesso', 'Dados importados com sucesso');
+          loadStats();
         }
-      },
-      'plain-text'
-    );
+      } catch (error) {
+        showAlert('Erro', 'JSON inválido ou erro ao importar');
+      }
+    });
   };
 
   const handleReset = () => {
-    Alert.alert(
+    showAlert(
       'Resetar Progresso',
       'ATENÇÃO: Esta ação irá apagar todo o seu progresso. Esta ação não pode ser desfeita.',
       [
@@ -162,7 +161,7 @@ export default function SettingsScreen() {
           text: 'Resetar',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
+            showAlert(
               'Confirmação Final',
               'Tem certeza ABSOLUTA que deseja resetar todo o progresso?',
               [
@@ -173,9 +172,9 @@ export default function SettingsScreen() {
                   onPress: async () => {
                     try {
                       await api.post('/api/reset');
-                      Alert.alert('Pronto', 'Progresso resetado');
+                      showAlert('Pronto', 'Progresso resetado');
                     } catch (error) {
-                      Alert.alert('Erro', 'Erro ao resetar');
+                      showAlert('Erro', 'Erro ao resetar');
                     }
                   },
                 },
@@ -188,7 +187,7 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair?', [
+    showAlert('Sair', 'Deseja realmente sair?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Sair',
@@ -211,6 +210,7 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ResponsiveContainer>
         {/* User Info */}
         <View style={styles.section}>
           <View style={styles.userCard}>
@@ -351,6 +351,7 @@ export default function SettingsScreen() {
           <Ionicons name="log-out-outline" size={24} color="#f85149" />
           <Text style={styles.logoutText}>Sair</Text>
         </TouchableOpacity>
+        </ResponsiveContainer>
       </ScrollView>
 
       {/* Level Info Modal */}

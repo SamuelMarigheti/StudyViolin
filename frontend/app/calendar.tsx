@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
+import ResponsiveContainer from '../src/components/ResponsiveContainer';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTHS = [
@@ -216,6 +217,7 @@ export default function CalendarScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ResponsiveContainer>
         {/* Stats Summary */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
@@ -264,6 +266,7 @@ export default function CalendarScreen() {
             <Text style={styles.legendLabel}>Menos → Mais</Text>
           </View>
         </View>
+        </ResponsiveContainer>
       </ScrollView>
 
       {/* Day Detail Modal */}

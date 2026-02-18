@@ -5,13 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Alert,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import SessionTimer from './SessionTimer';
+import { showAlert } from '../utils/alert';
 
 interface Session {
   id: string;
@@ -125,11 +124,7 @@ export default function SessionCard({
       });
       onRefresh();
     } catch (error) {
-      if (Platform.OS === 'web') {
-        window.alert('Não foi possível registrar a prática');
-      } else {
-        Alert.alert('Erro', 'Não foi possível registrar a prática');
-      }
+      showAlert('Erro', 'Não foi possível registrar a prática');
     }
   };
 
@@ -147,28 +142,18 @@ export default function SessionCard({
         onRefresh();
         loadLessons();
       } catch (error) {
-        if (Platform.OS === 'web') {
-          window.alert('Não foi possível mudar de lição');
-        } else {
-          Alert.alert('Erro', 'Não foi possível mudar de lição');
-        }
+        showAlert('Erro', 'Não foi possível mudar de lição');
       }
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm(message)) {
-        doAdvance();
-      }
-    } else {
-      Alert.alert(
-        direction === 'next' ? 'Avançar Lição' : 'Voltar Lição',
-        message,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Confirmar', onPress: doAdvance },
-        ]
-      );
-    }
+    showAlert(
+      direction === 'next' ? 'Avançar Lição' : 'Voltar Lição',
+      message,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Confirmar', onPress: doAdvance },
+      ]
+    );
   };
 
   const handleSaveNotes = async () => {

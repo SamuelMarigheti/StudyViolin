@@ -16,6 +16,8 @@ import { api } from '../src/services/api';
 import SessionCard from '../src/components/SessionCard';
 import GlobalTimer from '../src/components/GlobalTimer';
 import StatsBar from '../src/components/StatsBar';
+import ResponsiveContainer from '../src/components/ResponsiveContainer';
+import { useResponsive } from '../src/utils/responsive';
 
 interface Session {
   id: string;
@@ -30,6 +32,7 @@ interface Session {
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { horizontalPadding } = useResponsive();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [progress, setProgress] = useState<any>(null);
@@ -122,7 +125,7 @@ export default function DashboardScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -131,24 +134,26 @@ export default function DashboardScreen() {
           />
         }
       >
-        <GlobalTimer />
-        
-        {stats && <StatsBar stats={stats} />}
+        <ResponsiveContainer>
+          <GlobalTimer />
 
-        <Text style={styles.sectionTitle}>Sessões de Hoje</Text>
-        
-        {sessions.map((session) => (
-          <SessionCard
-            key={session.id}
-            session={session}
-            progress={progress}
-            expanded={expandedSession === session.id}
-            onToggle={() => setExpandedSession(
-              expandedSession === session.id ? null : session.id
-            )}
-            onRefresh={loadData}
-          />
-        ))}
+          {stats && <StatsBar stats={stats} />}
+
+          <Text style={styles.sectionTitle}>Sessões de Hoje</Text>
+
+          {sessions.map((session) => (
+            <SessionCard
+              key={session.id}
+              session={session}
+              progress={progress}
+              expanded={expandedSession === session.id}
+              onToggle={() => setExpandedSession(
+                expandedSession === session.id ? null : session.id
+              )}
+              onRefresh={loadData}
+            />
+          ))}
+        </ResponsiveContainer>
       </ScrollView>
     </SafeAreaView>
   );
@@ -194,7 +199,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingVertical: 16,
     paddingBottom: 32,
   },
   sectionTitle: {

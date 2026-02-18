@@ -6,12 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
+import { showAlert } from '../src/utils/alert';
+import ResponsiveContainer from '../src/components/ResponsiveContainer';
 
 const SESSION_NAMES: Record<string, string> = {
   scales: 'Escalas e Arpejos',
@@ -69,7 +70,7 @@ export default function ProgressScreen() {
   }, []);
 
   const handleJumpToLesson = async (sessionType: string, lessonId: number) => {
-    Alert.alert(
+    showAlert(
       'Pular para Lição',
       `Deseja ir para a lição ${lessonId}?`,
       [
@@ -80,9 +81,9 @@ export default function ProgressScreen() {
             try {
               await api.post(`/api/progress/jump?session_type=${sessionType}&lesson_id=${lessonId}`);
               loadData();
-              Alert.alert('Sucesso', `Agora você está na lição ${lessonId}`);
+              showAlert('Sucesso', `Agora você está na lição ${lessonId}`);
             } catch (error) {
-              Alert.alert('Erro', 'Não foi possível pular para a lição');
+              showAlert('Erro', 'Não foi possível pular para a lição');
             }
           },
         },
@@ -120,6 +121,7 @@ export default function ProgressScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ResponsiveContainer>
         {/* Overall Stats */}
         <View style={styles.overallCard}>
           <Text style={styles.levelLabel}>Nível Atual</Text>
@@ -238,6 +240,7 @@ export default function ProgressScreen() {
             </View>
           );
         })}
+        </ResponsiveContainer>
       </ScrollView>
     </SafeAreaView>
   );

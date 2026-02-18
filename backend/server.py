@@ -1,14 +1,17 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import re
+import secrets
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timedelta
@@ -30,9 +33,32 @@ from data.lessons_seed import (
 )
 
 # JWT Configuration
-SECRET_KEY = os.environ.get('JWT_SECRET', 'violin-study-plan-secret-key-2024')
+_jwt_secret = os.environ.get('JWT_SECRET', '')
+if not _jwt_secret and os.environ.get('RAILWAY_ENVIRONMENT'):
+    raise RuntimeError("JWT_SECRET must be set in production")
+SECRET_KEY = _jwt_secret or 'violin-study-plan-secret-key-2024-dev-only'
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
+ACCESS_TOKEN_EXPIRE_DAYS = 7
+
+# Admin default password
+ADMIN_DEFAULT_PASSWORD = os.environ.get('ADMIN_DEFAULT_PASSWORD', '')
+if not ADMIN_DEFAULT_PASSWORD:
+    ADMIN_DEFAULT_PASSWORD = secrets.token_urlsafe(16)
+    logger_early = logging.getLogger(__name__)
+    logger_early.warning(f"ADMIN_DEFAULT_PASSWORD not set. Generated: {ADMIN_DEFAULT_PASSWORD}")
+
+# Password policy
+def validate_password_strength(password: str) -> Optional[str]:
+    """Returns error message if password is weak, None if strong."""
+    if len(password) < 10:
+        return "A senha deve ter pelo menos 10 caracteres"
+    if not re.search(r'[A-Z]', password):
+        return "A senha deve conter pelo menos uma letra maiúscula"
+    if not re.search(r'[a-z]', password):
+        return "A senha deve conter pelo menos uma letra minúscula"
+    if not re.search(r'[0-9]', password):
+        return "A senha deve conter pelo menos um número"
+    return None
 
 # Brute force protection
 LOGIN_ATTEMPTS = {}  # {ip: {"count": int, "last_attempt": timestamp, "locked_until": timestamp}}
@@ -43,6 +69,17 @@ LOCKOUT_DURATION = 300  # 5 minutes
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'violin_study')]
+
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if os.environ.get('RAILWAY_ENVIRONMENT'):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
 # Create the main app
 app = FastAPI(title="Violin Study Plan API", version="2.0")
@@ -62,15 +99,15 @@ logger = logging.getLogger(__name__)
 # ============== MODELS ==============
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., max_length=100)
+    password: str = Field(..., max_length=200)
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
+    current_password: str = Field(..., max_length=200)
+    new_password: str = Field(..., max_length=200)
 
 class FirstLoginPasswordRequest(BaseModel):
-    new_password: str
+    new_password: str = Field(..., max_length=200)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -100,51 +137,51 @@ class AdvanceLessonRequest(BaseModel):
     direction: str = "next"
 
 class UpdateNotesRequest(BaseModel):
-    session_type: str
+    session_type: str = Field(..., max_length=50)
     lesson_id: int
-    notes: str
+    notes: str = Field(..., max_length=5000)
 
 class WarmupCheckRequest(BaseModel):
     item_id: int
     completed: bool
 
 class DailyLogRequest(BaseModel):
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=5000)
 
 class UpdateSessionDurationsRequest(BaseModel):
     durations: Dict[str, int]  # session_id -> duration in seconds
 
 class CreateMethodRequest(BaseModel):
-    name: str
-    author: str
-    category: str  # Escalas, Arco, Dedilhado, Posições, Estudos, Repertório
-    session_type: str  # scales, bow, speed, positions, studies, repertoire
+    name: str = Field(..., max_length=200)
+    author: str = Field(..., max_length=200)
+    category: str = Field(..., max_length=100)
+    session_type: str = Field(..., max_length=50)
 
 class CreateLessonRequest(BaseModel):
-    title: str
-    subtitle: str = ""
-    instruction: str = ""
-    level: str = ""
+    title: str = Field(..., max_length=500)
+    subtitle: str = Field("", max_length=500)
+    instruction: str = Field("", max_length=2000)
+    level: str = Field("", max_length=100)
     tags: List[str] = []
 
 class BatchLessonRequest(BaseModel):
-    title_prefix: str  # e.g. "Wohlfahrt nº"
-    count: int  # e.g. 60
-    subtitle: str = ""
-    instruction: str = ""
-    level: str = ""
+    title_prefix: str = Field(..., max_length=200)
+    count: int = Field(..., ge=1, le=500)
+    subtitle: str = Field("", max_length=500)
+    instruction: str = Field("", max_length=2000)
+    level: str = Field("", max_length=100)
     tags: List[str] = []
 
 class UpdateMethodRequest(BaseModel):
-    name: Optional[str] = None
-    author: Optional[str] = None
-    category: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=200)
+    author: Optional[str] = Field(None, max_length=200)
+    category: Optional[str] = Field(None, max_length=100)
 
 class UpdateLessonRequest(BaseModel):
-    title: Optional[str] = None
-    subtitle: Optional[str] = None
-    instruction: Optional[str] = None
-    level: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=500)
+    subtitle: Optional[str] = Field(None, max_length=500)
+    instruction: Optional[str] = Field(None, max_length=2000)
+    level: Optional[str] = Field(None, max_length=100)
     tags: Optional[List[str]] = None
 
 class ReorderLessonsRequest(BaseModel):
@@ -360,7 +397,7 @@ async def login(request: LoginRequest, req: Request):
     
     # Create default admin user if not exists
     if user is None and request.username == "admin":
-        hashed = hash_password("violino2024")
+        hashed = hash_password(ADMIN_DEFAULT_PASSWORD)
         user = {
             "username": "admin",
             "password_hash": hashed,
@@ -411,9 +448,10 @@ async def change_password(request: ChangePasswordRequest, user: dict = Depends(g
     """Change user password"""
     if not verify_password(request.current_password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="Senha atual incorreta")
-    
-    if len(request.new_password) < 8:
-        raise HTTPException(status_code=400, detail="A nova senha deve ter pelo menos 8 caracteres")
+
+    pw_error = validate_password_strength(request.new_password)
+    if pw_error:
+        raise HTTPException(status_code=400, detail=pw_error)
     
     new_hash = hash_password(request.new_password)
     await db.users.update_one(
@@ -431,9 +469,10 @@ async def first_login_password(request: FirstLoginPasswordRequest, user: dict = 
     """Change password on first login (forced)"""
     if not user.get("must_change_password", False):
         raise HTTPException(status_code=400, detail="Troca de senha não necessária")
-    
-    if len(request.new_password) < 8:
-        raise HTTPException(status_code=400, detail="A nova senha deve ter pelo menos 8 caracteres")
+
+    pw_error = validate_password_strength(request.new_password)
+    if pw_error:
+        raise HTTPException(status_code=400, detail=pw_error)
     
     new_hash = hash_password(request.new_password)
     await db.users.update_one(
@@ -1007,6 +1046,9 @@ async def update_method(method_id: str, request: UpdateMethodRequest, user: dict
     if not method:
         raise HTTPException(status_code=404, detail="Método não encontrado ou é um método padrão (não editável)")
 
+    if method.get("created_by") and method["created_by"] != user["username"]:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este método")
+
     update_data = {}
     if request.name is not None:
         update_data["name"] = request.name
@@ -1032,6 +1074,9 @@ async def delete_method(method_id: str, user: dict = Depends(get_current_user)):
     method = await db.custom_methods.find_one({"_id": oid})
     if not method:
         raise HTTPException(status_code=404, detail="Método não encontrado ou é um método padrão (não editável)")
+
+    if method.get("created_by") and method["created_by"] != user["username"]:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para deletar este método")
 
     # Delete all custom lessons belonging to this method
     await db.custom_lessons.delete_many({"custom_method_id": method_id})
@@ -1093,9 +1138,6 @@ async def create_lessons_batch(method_id: str, request: BatchLessonRequest, user
     if not method:
         raise HTTPException(status_code=404, detail="Método não encontrado")
 
-    if request.count < 1 or request.count > 500:
-        raise HTTPException(status_code=400, detail="Quantidade deve ser entre 1 e 500")
-
     # Get the max order for lessons in this method
     last_lesson = await db.custom_lessons.find_one(
         {"custom_method_id": method_id},
@@ -1138,6 +1180,9 @@ async def update_lesson(lesson_id: str, request: UpdateLessonRequest, user: dict
     if not lesson:
         raise HTTPException(status_code=404, detail="Lição não encontrada ou é uma lição padrão (não editável)")
 
+    if lesson.get("created_by") and lesson["created_by"] != user["username"]:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar esta lição")
+
     update_data = {}
     if request.title is not None:
         update_data["title"] = request.title
@@ -1167,6 +1212,9 @@ async def delete_lesson(lesson_id: str, user: dict = Depends(get_current_user)):
     lesson = await db.custom_lessons.find_one({"_id": oid})
     if not lesson:
         raise HTTPException(status_code=404, detail="Lição não encontrada ou é uma lição padrão (não editável)")
+
+    if lesson.get("created_by") and lesson["created_by"] != user["username"]:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para deletar esta lição")
 
     await db.custom_lessons.delete_one({"_id": oid})
     return {"message": "Lição deletada com sucesso"}
@@ -1391,13 +1439,19 @@ async def reset_progress(user: dict = Depends(get_current_user)):
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS — read allowed origins from env, default to permissive for dev
+_allowed_origins_str = os.environ.get('ALLOWED_ORIGINS', '')
+_allowed_origins = [o.strip() for o in _allowed_origins_str.split(',') if o.strip()] if _allowed_origins_str else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Serve frontend static files (built with: npx expo export --platform web)
 FRONTEND_DIR = ROOT_DIR / "static"

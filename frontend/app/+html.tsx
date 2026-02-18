@@ -12,6 +12,8 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
+        <meta name="theme-color" content="#0d1117" />
+        <meta name="description" content="Plano de Estudos de Violino — Do Iniciante ao Virtuoso. 489 lições em 7 sessões diárias." />
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
           If you want to enable scrolling, remove `ScrollViewStyleReset` and
@@ -24,6 +26,8 @@ export default function Root({ children }: PropsWithChildren) {
               body > div:first-child { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; }
               [role="tablist"] [role="tab"] * { overflow: visible !important; }
               [role="heading"], [role="heading"] * { overflow: visible !important; }
+              button, [role="button"], a { cursor: pointer !important; }
+              * { -webkit-tap-highlight-color: transparent; }
             `,
           }}
         />

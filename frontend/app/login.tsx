@@ -7,7 +7,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -15,6 +14,8 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { showAlert } from '../src/utils/alert';
+import ResponsiveContainer from '../src/components/ResponsiveContainer';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -34,7 +35,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      showAlert('Erro', 'Por favor, preencha todos os campos');
       return;
     }
 
@@ -47,19 +48,23 @@ export default function LoginScreen() {
         router.replace('/dashboard');
       }
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Credenciais inválidas');
+      showAlert('Erro', error.message || 'Credenciais inválidas');
     } finally {
       setLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 8) {
-      Alert.alert('Erro', 'A nova senha deve ter pelo menos 8 caracteres');
+    if (newPassword.length < 10) {
+      showAlert('Erro', 'A nova senha deve ter pelo menos 10 caracteres');
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      showAlert('Erro', 'A senha deve conter maiúscula, minúscula e número');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+      showAlert('Erro', 'As senhas não coincidem');
       return;
     }
 
@@ -67,11 +72,11 @@ export default function LoginScreen() {
     try {
       await changeFirstPassword(newPassword);
       setShowPasswordModal(false);
-      Alert.alert('Sucesso', 'Senha alterada com sucesso!', [
+      showAlert('Sucesso', 'Senha alterada com sucesso!', [
         { text: 'OK', onPress: () => router.replace('/dashboard') }
       ]);
     } catch (error: any) {
-      Alert.alert('Erro', error.response?.data?.detail || 'Erro ao alterar senha');
+      showAlert('Erro', error.response?.data?.detail || 'Erro ao alterar senha');
     } finally {
       setChangingPassword(false);
     }
@@ -83,7 +88,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.content}>
+        <ResponsiveContainer maxWidth={480} style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
           <View style={styles.iconContainer}>
             <View style={styles.violinIcon}>
               <Ionicons name="musical-notes" size={60} color="#d4a843" />
@@ -160,7 +165,7 @@ export default function LoginScreen() {
               <Text style={styles.statLabel}>min/dia</Text>
             </View>
           </View>
-        </View>
+        </ResponsiveContainer>
       </KeyboardAvoidingView>
 
       {/* First Login Password Change Modal */}
@@ -185,7 +190,7 @@ export default function LoginScreen() {
                 <Ionicons name="lock-closed-outline" size={20} color="#8b949e" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Nova senha (mín. 8 caracteres)"
+                  placeholder="Nova senha (mín. 10 chars, A-z, 0-9)"
                   placeholderTextColor="#8b949e"
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -212,19 +217,25 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {newPassword.length > 0 && newPassword.length < 8 && (
+              {newPassword.length > 0 && newPassword.length < 10 && (
                 <Text style={styles.passwordHint}>
-                  <Ionicons name="information-circle" size={14} color="#f85149" /> Mínimo 8 caracteres
+                  <Ionicons name="information-circle" size={14} color="#f85149" /> Mínimo 10 caracteres
                 </Text>
               )}
 
-              {newPassword.length >= 8 && confirmPassword.length > 0 && newPassword !== confirmPassword && (
+              {newPassword.length >= 10 && (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) && (
+                <Text style={styles.passwordHint}>
+                  <Ionicons name="information-circle" size={14} color="#f85149" /> Deve conter maiúscula, minúscula e número
+                </Text>
+              )}
+
+              {newPassword.length >= 10 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) && confirmPassword.length > 0 && newPassword !== confirmPassword && (
                 <Text style={styles.passwordHint}>
                   <Ionicons name="close-circle" size={14} color="#f85149" /> As senhas não coincidem
                 </Text>
               )}
 
-              {newPassword.length >= 8 && confirmPassword === newPassword && (
+              {newPassword.length >= 10 && /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword) && /[0-9]/.test(newPassword) && confirmPassword === newPassword && (
                 <Text style={[styles.passwordHint, { color: '#3fb950' }]}>
                   <Ionicons name="checkmark-circle" size={14} color="#3fb950" /> Senhas conferem
                 </Text>
@@ -233,7 +244,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[styles.button, changingPassword && styles.buttonDisabled]}
                 onPress={handleChangePassword}
-                disabled={changingPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+                disabled={changingPassword || newPassword.length < 10 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || newPassword !== confirmPassword}
               >
                 {changingPassword ? (
                   <ActivityIndicator color="#0d1117" />
@@ -260,7 +271,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
   },
   iconContainer: {
     alignItems: 'center',
