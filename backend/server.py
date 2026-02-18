@@ -1462,6 +1462,25 @@ else:
             "api": "/api/"
         }
 
+@app.on_event("startup")
+async def startup_reset_admin():
+    """Reset admin password if RESET_ADMIN env var is set"""
+    if os.environ.get('RESET_ADMIN', '').lower() == 'true':
+        user = await db.users.find_one({"username": "admin"})
+        if user:
+            new_hash = hash_password(ADMIN_DEFAULT_PASSWORD)
+            await db.users.update_one(
+                {"username": "admin"},
+                {"$set": {
+                    "password_hash": new_hash,
+                    "must_change_password": True,
+                    "password_changed": False,
+                }}
+            )
+            logger.info("Admin password reset to default (violino2024). Remove RESET_ADMIN env var after login.")
+        else:
+            logger.info("No admin user found, will be created on first login.")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
