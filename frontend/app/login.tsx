@@ -139,11 +139,8 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
             
-            <Text style={styles.hint}>
-              Primeiro acesso: admin / violino2024
-            </Text>
             <Text style={styles.hintSmall}>
-              Você será solicitado a trocar a senha no primeiro login
+              Entre com suas credenciais para acessar
             </Text>
           </View>
           

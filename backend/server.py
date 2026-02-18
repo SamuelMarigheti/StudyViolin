@@ -1386,6 +1386,16 @@ async def reset_progress(user: dict = Depends(get_current_user)):
     
     return {"message": "Progresso resetado com sucesso"}
 
+# Root route (for Railway healthcheck and public access)
+@app.get("/")
+async def root_redirect():
+    return {
+        "message": "Violin Study Plan API",
+        "version": "2.0",
+        "docs": "/docs",
+        "api": "/api/"
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
