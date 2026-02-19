@@ -1,18 +1,17 @@
 const createExpoWebpackConfigAsync = require('@expo/webpack-config');
 
 module.exports = async function (env, argv) {
-  const config = await createExpoWebpackConfigAsync(env, argv);
-
-  // Customize the config before returning it.
-  config.module.rules.push({
-    test: /node_modules\/sucrase\/.+\.js$/,
-    use: {
-      loader: 'babel-loader',
-      options: {
-        presets: ['@babel/preset-env'],
+  const config = await createExpoWebpackConfigAsync(
+    {
+      ...env,
+      babel: {
+        dangerouslyAddModulePathsToTranspile: ['sucrase'],
       },
     },
-  });
+    argv
+  );
+
+  // The 'sucrase' package will now be transpiled by Babel.
 
   return config;
 };
