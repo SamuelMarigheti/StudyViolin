@@ -36,7 +36,7 @@ if not _jwt_secret and os.environ.get('RAILWAY_ENVIRONMENT'):
     raise RuntimeError("JWT_SECRET must be set in production")
 SECRET_KEY = _jwt_secret or 'violin-study-plan-secret-key-2024-dev-only'
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 7
+ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get('SESSION_EXPIRE_HOURS', 24))
 
 # Admin default password
 ADMIN_DEFAULT_PASSWORD = "violino2024"
@@ -194,7 +194,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+        expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -649,6 +649,48 @@ async def log_practice(request: PracticeLogRequest, user: dict = Depends(get_cur
         "lesson_id": request.lesson_id,
         "practice_count": session_data["practice_counts"][lesson_key],
         "date": today
+    }
+
+@api_router.post("/progress/undo-practice")
+async def undo_practice(request: PracticeLogRequest, user: dict = Depends(get_current_user)):
+    """Undo the last practice log for a lesson (decrements count, floor at 0)."""
+    all_lessons = await get_all_lessons_merged()
+    if request.session_type not in all_lessons:
+        raise HTTPException(status_code=400, detail="Tipo de sessão inválido")
+
+    progress = await db.progress.find_one({"username": user["username"]})
+    if not progress:
+        raise HTTPException(status_code=404, detail="Progresso não encontrado")
+
+    session_data = progress.get(request.session_type, {
+        "current_lesson": 1,
+        "completed_lessons": [],
+        "practice_counts": {},
+        "last_practiced": {},
+        "notes": {},
+    })
+
+    lesson_key = str(request.lesson_id)
+    current_count = session_data.get("practice_counts", {}).get(lesson_key, 0)
+
+    if current_count <= 0:
+        raise HTTPException(status_code=400, detail="Não há prática para desfazer")
+
+    new_count = current_count - 1
+    session_data["practice_counts"][lesson_key] = new_count
+
+    if new_count == 0:
+        session_data.get("last_practiced", {}).pop(lesson_key, None)
+
+    await db.progress.update_one(
+        {"username": user["username"]},
+        {"$set": {request.session_type: session_data}},
+    )
+
+    return {
+        "message": "Prática desfeita",
+        "lesson_id": request.lesson_id,
+        "practice_count": new_count,
     }
 
 @api_router.post("/progress/advance")

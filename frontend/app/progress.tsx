@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
 import { showAlert } from '../src/utils/alert';
 import ResponsiveContainer from '../src/components/ResponsiveContainer';
-import Metronome from '../src/components/Metronome';
 
 const SESSION_NAMES: Record<string, string> = {
   scales: 'Escalas e Arpejos',
@@ -40,7 +39,6 @@ export default function ProgressScreen() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [lessons, setLessons] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
-  const [showMetronome, setShowMetronome] = useState(false);
 
   const loadData = async () => {
     try {
@@ -119,26 +117,11 @@ export default function ProgressScreen() {
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Progresso</Text>
-        {/* Metronome toggle */}
-        <TouchableOpacity
-          style={styles.metronomeToggle}
-          onPress={() => setShowMetronome(v => !v)}
-        >
-          <Ionicons
-            name="musical-note"
-            size={22}
-            color={showMetronome ? '#d4a843' : '#8b949e'}
-          />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <ResponsiveContainer>
-          {/* Metronome — always mounted to keep sounds loaded, hidden via display */}
-          <View style={{ display: showMetronome ? 'flex' : 'none' }}>
-            <Metronome />
-          </View>
-
           {/* Overall Stats */}
           <View style={styles.overallCard}>
             <Text style={styles.levelLabel}>Nível Atual</Text>
@@ -289,10 +272,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#ffffff',
-  },
-  metronomeToggle: {
-    padding: 8,
-    borderRadius: 8,
   },
   scrollView: {
     flex: 1,

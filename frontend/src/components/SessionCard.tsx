@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import SessionTimer from './SessionTimer';
+import Metronome from './Metronome';
 import { showAlert } from '../utils/alert';
 
 interface Session {
@@ -42,6 +43,7 @@ export default function SessionCard({
   const [notes, setNotes] = useState('');
   const [warmupChecklist, setWarmupChecklist] = useState<any[]>([]);
   const [sessionTip, setSessionTip] = useState('');
+  const [showMetronome, setShowMetronome] = useState(false);
 
   const sessionProgress = progress?.[session.id] || {
     current_lesson: 1,
@@ -92,7 +94,6 @@ export default function SessionCard({
         api.get('/api/warmup-checklist'),
         api.get('/api/progress'),
       ]);
-      
       const todayWarmup = progressRes.data.warmup_today;
       if (todayWarmup?.checklist) {
         setWarmupChecklist(todayWarmup.checklist);
@@ -116,44 +117,85 @@ export default function SessionCard({
     }
   };
 
-  const handlePractice = async () => {
-    try {
-      await api.post('/api/progress/practice', {
-        session_type: session.id,
-        lesson_id: currentLesson,
-      });
-      onRefresh();
-    } catch (error) {
-      showAlert('Erro', 'Não foi possível registrar a prática');
-    }
+  const handlePractice = () => {
+    const currentLessonData = lessons.find((l) => l.id === currentLesson);
+    const lessonName = currentLessonData?.title ?? `Lição ${currentLesson}`;
+
+    showAlert(
+      'Registrar Prática',
+      `Confirmar que você praticou:\n\n"${lessonName}"\n\nIsso incrementará o contador de práticas.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Registrar',
+          onPress: async () => {
+            try {
+              await api.post('/api/progress/practice', {
+                session_type: session.id,
+                lesson_id: currentLesson,
+              });
+              onRefresh();
+            } catch {
+              showAlert('Erro', 'Não foi possível registrar a prática. Tente novamente.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleUndoPractice = () => {
+    if (practiceCount <= 0) return;
+
+    showAlert(
+      'Desfazer Prática',
+      `Deseja desfazer o último registro de prática desta lição?\n\nContador atual: ${practiceCount}x → ${practiceCount - 1}x`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desfazer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.post('/api/progress/undo-practice', {
+                session_type: session.id,
+                lesson_id: currentLesson,
+              });
+              onRefresh();
+            } catch {
+              showAlert('Erro', 'Não foi possível desfazer a prática. Tente novamente.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleAdvance = (direction: 'next' | 'previous') => {
-    const message = direction === 'next'
-      ? 'Tem certeza que deseja avançar para a próxima lição?'
-      : 'Deseja voltar para a lição anterior?';
+    const isNext = direction === 'next';
+    const title = isNext ? 'Avançar Lição' : 'Voltar Lição';
+    const message = isNext
+      ? `Avançar para a lição ${currentLesson + 1}?\n\nA lição atual será marcada como concluída.`
+      : `Voltar para a lição ${currentLesson - 1}?\n\nSeu progresso e anotações na lição atual serão mantidos.`;
 
-    const doAdvance = async () => {
-      try {
-        await api.post('/api/progress/advance', {
-          session_type: session.id,
-          direction,
-        });
-        onRefresh();
-        loadLessons();
-      } catch (error) {
-        showAlert('Erro', 'Não foi possível mudar de lição');
-      }
-    };
-
-    showAlert(
-      direction === 'next' ? 'Avançar Lição' : 'Voltar Lição',
-      message,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Confirmar', onPress: doAdvance },
-      ]
-    );
+    showAlert(title, message, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: isNext ? 'Avançar' : 'Voltar',
+        onPress: async () => {
+          try {
+            await api.post('/api/progress/advance', {
+              session_type: session.id,
+              direction,
+            });
+            onRefresh();
+            loadLessons();
+          } catch {
+            showAlert('Erro', 'Não foi possível mudar de lição. Tente novamente.');
+          }
+        },
+      },
+    ]);
   };
 
   const handleSaveNotes = async () => {
@@ -220,13 +262,12 @@ export default function SessionCard({
                   />
                   <Text style={[
                     styles.checklistText,
-                    item.completed && styles.checklistTextDone
+                    item.completed && styles.checklistTextDone,
                   ]}>
                     {item.text}
                   </Text>
                 </TouchableOpacity>
               ))}
-              
               {sessionTip && (
                 <View style={styles.tipBox}>
                   <Ionicons name="bulb" size={18} color="#d4a843" />
@@ -261,6 +302,28 @@ export default function SessionCard({
               )}
 
               <SessionTimer duration={session.duration} />
+
+              {/* Metronome toggle */}
+              <TouchableOpacity
+                style={styles.metronomeToggleRow}
+                onPress={() => setShowMetronome((v) => !v)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="musical-note" size={16} color={showMetronome ? '#d4a843' : '#8b949e'} />
+                <Text style={[styles.metronomeToggleText, showMetronome && styles.metronomeToggleTextActive]}>
+                  {showMetronome ? 'Ocultar Metrônomo' : 'Abrir Metrônomo'}
+                </Text>
+                <Ionicons
+                  name={showMetronome ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={showMetronome ? '#d4a843' : '#8b949e'}
+                />
+              </TouchableOpacity>
+
+              {/* Metronome — always mounted to keep sounds loaded; hidden via display */}
+              <View style={{ display: showMetronome ? 'flex' : 'none' }}>
+                <Metronome />
+              </View>
 
               {sessionTip && (
                 <View style={styles.tipBox}>
@@ -298,14 +361,27 @@ export default function SessionCard({
                 />
               </View>
 
+              {/* Practice actions */}
               <View style={styles.actions}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.practiceButton]}
-                  onPress={handlePractice}
-                >
-                  <Ionicons name="checkmark" size={20} color="#ffffff" />
-                  <Text style={styles.actionButtonText}>Pratiquei</Text>
-                </TouchableOpacity>
+                <View style={styles.practiceRow}>
+                  <TouchableOpacity
+                    style={styles.practiceButton}
+                    onPress={handlePractice}
+                  >
+                    <Ionicons name="checkmark" size={20} color="#ffffff" />
+                    <Text style={styles.practiceButtonText}>Praticado</Text>
+                  </TouchableOpacity>
+
+                  {practiceCount > 0 && (
+                    <TouchableOpacity
+                      style={styles.undoButton}
+                      onPress={handleUndoPractice}
+                    >
+                      <Ionicons name="arrow-undo" size={18} color="#8b949e" />
+                      <Text style={styles.undoButtonText}>Desfazer</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 <View style={styles.navButtons}>
                   <TouchableOpacity
@@ -313,18 +389,33 @@ export default function SessionCard({
                     onPress={() => handleAdvance('previous')}
                     disabled={currentLesson <= 1}
                   >
-                    <Ionicons name="arrow-back" size={18} color={currentLesson > 1 ? '#8b949e' : '#30363d'} />
+                    <Ionicons
+                      name="arrow-back"
+                      size={18}
+                      color={currentLesson > 1 ? '#8b949e' : '#30363d'}
+                    />
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity
-                    style={[styles.navButton, styles.advanceButton, currentLesson >= session.lessons && styles.navButtonDisabled]}
+                    style={[
+                      styles.navButton,
+                      styles.advanceButton,
+                      currentLesson >= session.lessons && styles.navButtonDisabled,
+                    ]}
                     onPress={() => handleAdvance('next')}
                     disabled={currentLesson >= session.lessons}
                   >
-                    <Text style={[styles.advanceText, currentLesson >= session.lessons && { color: '#30363d' }]}>
+                    <Text style={[
+                      styles.advanceText,
+                      currentLesson >= session.lessons && { color: '#30363d' },
+                    ]}>
                       Avançar
                     </Text>
-                    <Ionicons name="arrow-forward" size={18} color={currentLesson < session.lessons ? '#d4a843' : '#30363d'} />
+                    <Ionicons
+                      name="arrow-forward"
+                      size={18}
+                      color={currentLesson < session.lessons ? '#d4a843' : '#30363d'}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -470,6 +561,26 @@ const styles = StyleSheet.create({
     color: '#c9d1d9',
     lineHeight: 20,
   },
+  metronomeToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    borderTopWidth: 1,
+    borderTopColor: '#21262d',
+  },
+  metronomeToggleText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#8b949e',
+    fontWeight: '500',
+  },
+  metronomeToggleTextActive: {
+    color: '#d4a843',
+  },
   tipBox: {
     flexDirection: 'row',
     backgroundColor: 'rgba(212, 168, 67, 0.1)',
@@ -526,26 +637,46 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 20,
   },
-  actionButton: {
+  practiceRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  practiceButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 14,
     borderRadius: 8,
     gap: 8,
-  },
-  practiceButton: {
     backgroundColor: '#238636',
   },
-  actionButtonText: {
+  practiceButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
+  undoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#30363d',
+    backgroundColor: '#161b22',
+  },
+  undoButtonText: {
+    color: '#8b949e',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   navButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
     gap: 12,
   },
   navButton: {

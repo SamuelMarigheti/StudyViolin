@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../services/api';
+import { api, setAuthFailureCallback } from '../services/api';
 
 interface User {
   username: string;
@@ -29,6 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     checkAuth();
+    // When a 401 is received mid-session (token expired), clear user state.
+    setAuthFailureCallback(() => {
+      setUser(null);
+      setMustChangePassword(false);
+    });
+    return () => setAuthFailureCallback(null);
   }, []);
 
   const checkAuth = async () => {

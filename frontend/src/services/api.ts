@@ -12,6 +12,13 @@ export const api = axios.create({
   },
 });
 
+// Callback invoked when any request returns 401 (session expired / token invalid).
+// Registered by AuthContext so it can clear state and redirect to login.
+let _onAuthFailure: (() => void) | null = null;
+export function setAuthFailureCallback(fn: (() => void) | null) {
+  _onAuthFailure = fn;
+}
+
 // Add request interceptor to attach token
 api.interceptors.request.use(
   async (config) => {
@@ -32,6 +39,8 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       await AsyncStorage.removeItem('auth_token');
+      delete api.defaults.headers.common['Authorization'];
+      _onAuthFailure?.();
     }
     return Promise.reject(error);
   }
