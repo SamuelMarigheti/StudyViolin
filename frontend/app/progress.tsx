@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
 import { showAlert } from '../src/utils/alert';
 import ResponsiveContainer from '../src/components/ResponsiveContainer';
+import Metronome from '../src/components/Metronome';
 
 const SESSION_NAMES: Record<string, string> = {
   scales: 'Escalas e Arpejos',
@@ -39,6 +40,7 @@ export default function ProgressScreen() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [lessons, setLessons] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+  const [showMetronome, setShowMetronome] = useState(false);
 
   const loadData = async () => {
     try {
@@ -117,129 +119,144 @@ export default function ProgressScreen() {
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Progresso</Text>
-        <View style={{ width: 40 }} />
+        {/* Metronome toggle */}
+        <TouchableOpacity
+          style={styles.metronomeToggle}
+          onPress={() => setShowMetronome(v => !v)}
+        >
+          <Ionicons
+            name="musical-note"
+            size={22}
+            color={showMetronome ? '#d4a843' : '#8b949e'}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <ResponsiveContainer>
-        {/* Overall Stats */}
-        <View style={styles.overallCard}>
-          <Text style={styles.levelLabel}>Nível Atual</Text>
-          <Text style={styles.levelValue}>{stats?.level || 'Iniciante'}</Text>
-          
-          <View style={styles.overallStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.completed_lessons || 0}</Text>
-              <Text style={styles.statLabel}>Lições Concluídas</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.total_lessons || 489}</Text>
-              <Text style={styles.statLabel}>Total de Lições</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stats?.completion_percentage || 0}%</Text>
-              <Text style={styles.statLabel}>Progresso</Text>
-            </View>
+          {/* Metronome — always mounted to keep sounds loaded, hidden via display */}
+          <View style={{ display: showMetronome ? 'flex' : 'none' }}>
+            <Metronome />
           </View>
 
-          <View style={styles.progressBarContainer}>
-            <View style={[styles.progressBar, { width: `${stats?.completion_percentage || 0}%` }]} />
-          </View>
-        </View>
+          {/* Overall Stats */}
+          <View style={styles.overallCard}>
+            <Text style={styles.levelLabel}>Nível Atual</Text>
+            <Text style={styles.levelValue}>{stats?.level || 'Iniciante'}</Text>
 
-        {/* Session Progress */}
-        <Text style={styles.sectionTitle}>Progresso por Sessão</Text>
-
-        {Object.entries(SESSION_NAMES).map(([key, name]) => {
-          const sessionProgress = stats?.session_progress?.[key] || { total: 0, completed: 0, current: 1 };
-          const percentage = sessionProgress.total > 0 
-            ? Math.round((sessionProgress.completed / sessionProgress.total) * 100) 
-            : 0;
-          const isExpanded = expandedSession === key;
-
-          return (
-            <View key={key} style={styles.sessionCard}>
-              <TouchableOpacity
-                style={styles.sessionHeader}
-                onPress={() => toggleSession(key)}
-              >
-                <View style={styles.sessionInfo}>
-                  <Ionicons
-                    name={SESSION_ICONS[key] as any}
-                    size={24}
-                    color="#d4a843"
-                  />
-                  <View style={styles.sessionText}>
-                    <Text style={styles.sessionName}>{name}</Text>
-                    <Text style={styles.sessionStats}>
-                      Lição {sessionProgress.current} de {sessionProgress.total} • {sessionProgress.completed} concluídas
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.sessionRight}>
-                  <Text style={styles.percentageText}>{percentage}%</Text>
-                  <Ionicons
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color="#8b949e"
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <View style={styles.sessionProgressBar}>
-                <View style={[styles.sessionProgress, { width: `${percentage}%` }]} />
+            <View style={styles.overallStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{stats?.completed_lessons || 0}</Text>
+                <Text style={styles.statLabel}>Lições Concluídas</Text>
               </View>
-
-              {isExpanded && (
-                <View style={styles.lessonsList}>
-                  {lessons[key]?.map((lesson: any) => {
-                    const sessionData = progress?.[key] || {};
-                    const isCompleted = sessionData.completed_lessons?.includes(lesson.id);
-                    const isCurrent = sessionData.current_lesson === lesson.id;
-                    const practiceCount = sessionData.practice_counts?.[String(lesson.id)] || 0;
-
-                    return (
-                      <TouchableOpacity
-                        key={lesson.id}
-                        style={[
-                          styles.lessonItem,
-                          isCurrent && styles.lessonItemCurrent,
-                        ]}
-                        onPress={() => handleJumpToLesson(key, lesson.id)}
-                      >
-                        <View style={styles.lessonStatus}>
-                          {isCompleted ? (
-                            <Ionicons name="checkmark-circle" size={20} color="#3fb950" />
-                          ) : isCurrent ? (
-                            <Ionicons name="play-circle" size={20} color="#d4a843" />
-                          ) : (
-                            <Ionicons name="ellipse-outline" size={20} color="#484f58" />
-                          )}
-                        </View>
-                        <View style={styles.lessonInfo}>
-                          <Text style={[
-                            styles.lessonTitle,
-                            isCompleted && styles.lessonTitleCompleted,
-                            isCurrent && styles.lessonTitleCurrent,
-                          ]}>
-                            {lesson.id}. {lesson.title}
-                          </Text>
-                          {practiceCount > 0 && (
-                            <Text style={styles.practiceCount}>
-                              Praticado {practiceCount}x
-                            </Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{stats?.total_lessons || 489}</Text>
+                <Text style={styles.statLabel}>Total de Lições</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{stats?.completion_percentage || 0}%</Text>
+                <Text style={styles.statLabel}>Progresso</Text>
+              </View>
             </View>
-          );
-        })}
+
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { width: `${stats?.completion_percentage || 0}%` }]} />
+            </View>
+          </View>
+
+          {/* Session Progress */}
+          <Text style={styles.sectionTitle}>Progresso por Sessão</Text>
+
+          {Object.entries(SESSION_NAMES).map(([key, name]) => {
+            const sessionProgress = stats?.session_progress?.[key] || { total: 0, completed: 0, current: 1 };
+            const percentage = sessionProgress.total > 0
+              ? Math.round((sessionProgress.completed / sessionProgress.total) * 100)
+              : 0;
+            const isExpanded = expandedSession === key;
+
+            return (
+              <View key={key} style={styles.sessionCard}>
+                <TouchableOpacity
+                  style={styles.sessionHeader}
+                  onPress={() => toggleSession(key)}
+                >
+                  <View style={styles.sessionInfo}>
+                    <Ionicons
+                      name={SESSION_ICONS[key] as any}
+                      size={24}
+                      color="#d4a843"
+                    />
+                    <View style={styles.sessionText}>
+                      <Text style={styles.sessionName}>{name}</Text>
+                      <Text style={styles.sessionStats}>
+                        Lição {sessionProgress.current} de {sessionProgress.total} • {sessionProgress.completed} concluídas
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.sessionRight}>
+                    <Text style={styles.percentageText}>{percentage}%</Text>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color="#8b949e"
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.sessionProgressBar}>
+                  <View style={[styles.sessionProgress, { width: `${percentage}%` }]} />
+                </View>
+
+                {isExpanded && (
+                  <View style={styles.lessonsList}>
+                    {lessons[key]?.map((lesson: any) => {
+                      const sessionData = progress?.[key] || {};
+                      const isCompleted = sessionData.completed_lessons?.includes(lesson.id);
+                      const isCurrent = sessionData.current_lesson === lesson.id;
+                      const practiceCount = sessionData.practice_counts?.[String(lesson.id)] || 0;
+
+                      return (
+                        <TouchableOpacity
+                          key={lesson.id}
+                          style={[
+                            styles.lessonItem,
+                            isCurrent && styles.lessonItemCurrent,
+                          ]}
+                          onPress={() => handleJumpToLesson(key, lesson.id)}
+                        >
+                          <View style={styles.lessonStatus}>
+                            {isCompleted ? (
+                              <Ionicons name="checkmark-circle" size={20} color="#3fb950" />
+                            ) : isCurrent ? (
+                              <Ionicons name="play-circle" size={20} color="#d4a843" />
+                            ) : (
+                              <Ionicons name="ellipse-outline" size={20} color="#484f58" />
+                            )}
+                          </View>
+                          <View style={styles.lessonInfo}>
+                            <Text style={[
+                              styles.lessonTitle,
+                              isCompleted && styles.lessonTitleCompleted,
+                              isCurrent && styles.lessonTitleCurrent,
+                            ]}>
+                              {lesson.id}. {lesson.title}
+                            </Text>
+                            {practiceCount > 0 && (
+                              <Text style={styles.practiceCount}>
+                                Praticado {practiceCount}x
+                              </Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </ResponsiveContainer>
       </ScrollView>
     </SafeAreaView>
@@ -272,6 +289,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  metronomeToggle: {
+    padding: 8,
+    borderRadius: 8,
   },
   scrollView: {
     flex: 1,
